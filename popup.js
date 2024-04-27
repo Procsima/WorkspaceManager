@@ -46,10 +46,10 @@ function addWorkspace(name, workspaceList) {
 
 function launchWorkspace(name) {
     chrome.runtime.sendMessage({type: 'launch', name: name}, function (response) {
-        if (response.success) {
-            document.querySelector(`input[value="${name}"]`).closest('.workspace').remove();
+        if (response && response.success) {
+            console.log("Workspace launched successfully.");
         } else {
-            alert('Error launching workspace.');
+            alert('Error launching workspace: ' + (response ? response.message : 'No response'));
         }
     });
 }
