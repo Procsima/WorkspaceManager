@@ -1,0 +1,109 @@
+* {
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Open Sans', sans-serif; /* Set default font for the body */
+    margin: 0;
+    padding: 0;
+    width: 500px; /* Fixed width for the popup */
+    background: #fff;
+}
+
+.workspace-manager {
+    display: block;
+    margin: 10px 0;
+}
+
+h1 {
+    font-family: 'Roboto Slab', serif; /* Roboto Slab for h1 */
+    font-size: 32px;
+    color: #112;
+    text-align: center;
+    margin: 30px 0;
+}
+
+.break {
+    display: block;
+    width: 400px;
+    height: 1px;
+    background-color: #cacac8;
+    margin: 0 auto;
+}
+
+.container {
+    width: 100%;
+    margin: 40px auto 40px;
+}
+
+#workspace-list {
+}
+
+.new-workspace { /* Width should be consistent for all workspaces */
+    margin: 0 auto; /* Center-align the workspace list */
+}
+
+.workspace {
+    width: 400px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: none;
+    margin: 0 auto 16px;
+    border-radius: 4px;
+}
+
+.workspace input[type="text"],
+.new-workspace input[type="text"] {
+    height: 44px;
+    flex-grow: 1;
+    padding-left: 12px;
+    font-size: 16px;
+    border: 1px solid #999;
+    border-radius: 8px;
+}
+
+button {
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    border: 1px solid #999;
+    color: #fff;
+    margin-left: 8px; /* Add left margin for spacing */
+}
+
+button i.fa {
+    font-size: 20px;
+}
+
+/* Colors */
+.launch {
+    background-color: #76bfb1;
+}
+
+.settings {
+    background-color: #cacac8;
+}
+
+.delete {
+    background-color: #ddaca3;
+}
+
+.create-empty {
+    background-color: #84b6dd;
+}
+
+.create-from-current {
+    background-color: #aa95cc;
+}
+
+/* Hover effects for buttons */
+button:hover {
+    opacity: 0.8;
+}

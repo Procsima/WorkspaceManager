@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workspace Manager</title>
+    <link rel="stylesheet" href="popup.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link href="https://fonts.googleapis.com/css?family=Roboto+Slab:400,700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans:400,700&display=swap" rel="stylesheet">
+
+</head>
+<body>
+
+<div class="workspace-manager">
+    <h1>Workspace Manager</h1>
+
+    <div class="break"></div>
+
+    <div class="container">
+        <div id="workspace-list">
+            <!-- Existing workspaces will be added here dynamically -->
+        </div>
+
+        <div class="workspace new-workspace">
+            <input type="text" placeholder="New workspace" class="new-workspace-name">
+            <button class="create-empty"><i class="fa fa-plus-square" aria-hidden="true"></i></button>
+            <button class="create-from-current"><i class="fa fa-clone" aria-hidden="true"></i></button>
+        </div>
+    </div>
+
+</div>
+
+<script src="popup.js"></script>
+</body>
+</html>
