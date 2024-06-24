@@ -1,140 +1,176 @@
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     switch (request.type) {
         case 'create':
-            sendResponse(createWorkspace(request.name, request.fromCurrent));
+            createWorkspace(request.name, request.fromCurrent, sendResponse);
             break;
         case 'delete':
-            sendResponse(deleteWorkspace(request.name));
+            deleteWorkspace(request.name, sendResponse);
             break;
         case 'launch':
-            sendResponse(launchWorkspace(request.name));
+            launchWorkspace(request.name, sendResponse);
             break;
         case 'rename':
-            sendResponse(renameWorkspace(request.oldName, request.newName));
+            renameWorkspace(request.oldName, request.newName, sendResponse);
             break;
         case 'list':
-            sendResponse(listWorkspaces());
+            listWorkspaces(sendResponse);
             break;
     }
+    return true;  // Indicates that we will respond asynchronously
 });
 
-function createWorkspace(name, fromCurrent) {
-    let workspaces = getStoredWorkspaces();
-    if (workspaces[name]) {
-        return { success: false, message: 'Workspace already exists.' };
-    }
-    workspaces[name] = { tabs: [] };
-    if (fromCurrent) {
-        let tabs = chrome.tabs.query({ currentWindow: true }, function(tabs) {
-            workspaces[name].tabs = tabs.map(tab => ({ url: tab.url, pinned: tab.pinned }));
-            setStoredWorkspaces(workspaces);
+function createWorkspace(name, fromCurrent, sendResponse) {
+    getStoredWorkspaces(function(workspaces) {
+        if (workspaces[name]) {
+            sendResponse({ success: false, message: 'Workspace already exists.' });
+            return;
+        }
+        workspaces[name] = { tabs: [] };
+        if (fromCurrent) {
+            chrome.tabs.query({ currentWindow: true }, function(tabs) {
+                workspaces[name].tabs = tabs.map(tab => ({ id: tab.id, url: tab.url, pinned: tab.pinned }));
+                setStoredWorkspaces(workspaces, function() {
+                    sendResponse({ success: true });
+                });
+            });
+        } else {
+            setStoredWorkspaces(workspaces, function() {
+                sendResponse({ success: true });
+            });
+        }
+    });
+}
+
+function deleteWorkspace(name, sendResponse) {
+    getStoredWorkspaces(function(workspaces) {
+        if (!workspaces[name]) {
+            sendResponse({ success: false, message: 'Workspace does not exist.' });
+            return;
+        }
+        delete workspaces[name];
+        setStoredWorkspaces(workspaces, function() {
+            sendResponse({ success: true });
         });
-    } else {
-        setStoredWorkspaces(workspaces);
-    }
-    return { success: true };
+    });
 }
 
-function deleteWorkspace(name) {
-    let workspaces = getStoredWorkspaces();
-    if (!workspaces[name]) {
-        return { success: false, message: 'Workspace does not exist.' };
-    }
-    delete workspaces[name];
-    setStoredWorkspaces(workspaces);
-    return { success: true };
-}
-
-function launchWorkspace(name) {
-    let workspaces = getStoredWorkspaces();
-    let workspace = workspaces[name];
-    if (workspace) {
+function launchWorkspace(name, sendResponse) {
+    getStoredWorkspaces(function(workspaces) {
+        let workspace = workspaces[name];
+        if (!workspace) {
+            sendResponse({ success: false, message: 'Workspace does not exist.' });
+            return;
+        }
         chrome.windows.create({ url: workspace.tabs.map(tab => tab.url) }, function(window) {
             workspace.windowId = window.id;
-            setStoredWorkspaces(workspaces);
+            chrome.tabs.query({ windowId: window.id }, function(tabs) {
+                workspace.tabs = tabs.map(tab => ({ id: tab.id, url: tab.url, pinned: tab.pinned }));
+                setStoredWorkspaces(workspaces, function() {
+                    sendResponse({ success: true });
+                });
+            });
         });
-        return { success: true };
-    } else {
-        return { success: false, message: 'Workspace does not exist.' };
-    }
+    });
 }
 
-function renameWorkspace(oldName, newName) {
-    let workspaces = getStoredWorkspaces();
-    if (workspaces[newName]) {
-        return { success: false, message: 'New workspace name already exists.' };
-    }
-    if (workspaces[oldName]) {
-        workspaces[newName] = workspaces[oldName];
-        delete workspaces[oldName];
-        setStoredWorkspaces(workspaces);
-        return { success: true };
-    } else {
-        return { success: false, message: 'Old workspace name does not exist.' };
-    }
+function renameWorkspace(oldName, newName, sendResponse) {
+    getStoredWorkspaces(function(workspaces) {
+        if (workspaces[newName]) {
+            sendResponse({ success: false, message: 'New workspace name already exists.' });
+            return;
+        }
+        if (workspaces[oldName]) {
+            workspaces[newName] = workspaces[oldName];
+            delete workspaces[oldName];
+            setStoredWorkspaces(workspaces, function() {
+                sendResponse({ success: true });
+            });
+        } else {
+            sendResponse({ success: false, message: 'Old workspace name does not exist.' });
+        }
+    });
 }
 
-function listWorkspaces() {
-    let workspaces = getStoredWorkspaces();
-    return Object.keys(workspaces).map(name => ({
-        name: name,
-        tabs: workspaces[name].tabs.length
-    }));
+function listWorkspaces(sendResponse) {
+    getStoredWorkspaces(function(workspaces) {
+        let workspaceList = Object.keys(workspaces).map(name => ({
+            name: name,
+            tabs: workspaces[name].tabs.length
+        }));
+        sendResponse(workspaceList);
+    });
 }
 
-function getStoredWorkspaces() {
-    return JSON.parse(localStorage.getItem('workspaces') || '{}');
+function getStoredWorkspaces(callback) {
+    chrome.storage.local.get('workspaces', function(data) {
+        callback(data.workspaces || {});
+    });
 }
 
-function setStoredWorkspaces(workspaces) {
-    localStorage.setItem('workspaces', JSON.stringify(workspaces));
+function setStoredWorkspaces(workspaces, callback) {
+    chrome.storage.local.set({ 'workspaces': workspaces }, callback);
 }
 
 // Tab event listeners
-chrome.tabs.onCreated.addListener(tab => {
-    updateWorkspaceTabsOnCreate(tab);
-});
-
-chrome.tabs.onRemoved.addListener((tabId, removeInfo) => {
-    updateWorkspaceTabsOnRemove(tabId, removeInfo);
-});
-
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-    updateWorkspaceTabsOnUpdate(tabId, changeInfo, tab);
-});
-
-function updateWorkspaceTabsOnCreate(tab) {
-    let workspaces = getStoredWorkspaces();
-    Object.keys(workspaces).forEach(name => {
-        if (workspaces[name].windowId === tab.windowId) {
-            workspaces[name].tabs.push({ id: tab.id, url: tab.url, pinned: tab.pinned });
-            setStoredWorkspaces(workspaces);
-        }
+chrome.tabs.onCreated.addListener(function(tab) {
+    console.log("Tab created: ", tab);
+    getStoredWorkspaces(function(workspaces) {
+        updateWorkspaceTabs(tab.windowId, workspaces, function(tabs) {
+            tabs.push({ id: tab.id, url: tab.url, pinned: tab.pinned });
+            return tabs;
+        });
     });
-}
+});
 
-function updateWorkspaceTabsOnRemove(tabId, removeInfo) {
-    let workspaces = getStoredWorkspaces();
-    Object.keys(workspaces).forEach(name => {
-        let tabs = workspaces[name].tabs;
-        let index = tabs.findIndex(t => t.id === tabId);
-        if (index !== -1) {
-            tabs.splice(index, 1);
-            setStoredWorkspaces(workspaces);
-        }
+chrome.tabs.onRemoved.addListener(function(tabId, removeInfo) {
+    console.log("Tab removed: ", tabId);
+    getStoredWorkspaces(function(workspaces) {
+        updateWorkspaceTabs(removeInfo.windowId, workspaces, function(tabs) {
+            return tabs.filter(tab => tab.id !== tabId);
+        });
     });
-}
+});
 
-function updateWorkspaceTabsOnUpdate(tabId, changeInfo, tab) {
-    if (changeInfo.url) {
-        let workspaces = getStoredWorkspaces();
-        Object.keys(workspaces).forEach(name => {
-            let tabs = workspaces[name].tabs;
+chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
+    console.log("Tab updated: ", tab);
+    if (!changeInfo.url) return;
+    getStoredWorkspaces(function(workspaces) {
+        updateWorkspaceTabs(tab.windowId, workspaces, function(tabs) {
             let foundTab = tabs.find(t => t.id === tabId);
             if (foundTab) {
                 foundTab.url = changeInfo.url;
-                setStoredWorkspaces(workspaces);
             }
+            return tabs;
         });
+    });
+});
+
+function updateWorkspaceTabs(windowId, workspaces, updateCallback) {
+    let workspaceUpdated = false;
+    for (let name in workspaces) {
+        let workspace = workspaces[name];
+        if (workspace.windowId === windowId) {
+            workspace.tabs = updateCallback(workspace.tabs);
+            workspaceUpdated = true;
+            break;
+        }
+    }
+    if (workspaceUpdated) {
+        setStoredWorkspaces(workspaces, function() {});
     }
 }
+
+// Window event listeners
+chrome.windows.onRemoved.addListener(function(windowId) {
+    console.log("Window removed: ", windowId);
+    getStoredWorkspaces(function(workspaces) {
+        for (let name in workspaces) {
+            let workspace = workspaces[name];
+            if (workspace.windowId === windowId) {
+                delete workspace.windowId;
+                setStoredWorkspaces(workspaces, function() {});
+                break;
+            }
+        }
+    });
+});
